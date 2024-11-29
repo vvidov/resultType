@@ -79,9 +79,9 @@ public class UserRegistrationService
     public Result<User, Error> RegisterUser(string email, string password)
     {
         return ValidateEmail(email)
-            .OnSuccess(ValidatePassword)
-            .OnSuccess(ValidateEmailService)
-            .OnSuccess(SendWelcomeEmail);
+            .OnSuccess(validEmail => ValidatePassword(password)
+                .OnSuccess(validPassword => CreateUser(new UserData(validEmail, validPassword)))
+                .OnSuccess(user => SendWelcomeEmail(user)));
     }
 }
 ```
@@ -95,13 +95,13 @@ graph LR
     ValidateEmail --> |Success| ValidatePassword_S[ValidatePassword]
     ValidateEmail --> |Invalid Email| ValidatePassword_E[ValidatePassword]
     
-    ValidatePassword_S --> |Success| ValidateService_S[ValidateEmailService]
-    ValidatePassword_S --> |Invalid Password| ValidateService_E[ValidateEmailService]
-    ValidatePassword_E --> ValidateService_E
+    ValidatePassword_S --> |Success| CreateUser_S[CreateUser]
+    ValidatePassword_S --> |Invalid Password| CreateUser_E[CreateUser]
+    ValidatePassword_E --> CreateUser_E
     
-    ValidateService_S --> |Success| SendEmail_S[SendWelcomeEmail]
-    ValidateService_S --> |Service Unavailable| SendEmail_E[SendWelcomeEmail]
-    ValidateService_E --> SendEmail_E
+    CreateUser_S --> |Success| SendEmail_S[SendWelcomeEmail]
+    CreateUser_S --> |User Exists| SendEmail_E[SendWelcomeEmail]
+    CreateUser_E --> SendEmail_E
     
     SendEmail_S --> |Success| Success[Success Result]
     SendEmail_S --> |Send Failed| Error[Error Result]
@@ -109,12 +109,12 @@ graph LR
     
     style ValidateEmail fill:#90EE90
     style ValidatePassword_S fill:#90EE90
-    style ValidateService_S fill:#90EE90
+    style CreateUser_S fill:#90EE90
     style SendEmail_S fill:#90EE90
     style Success fill:#98FB98
     
     style ValidatePassword_E fill:#FFB6C1
-    style ValidateService_E fill:#FFB6C1
+    style CreateUser_E fill:#FFB6C1
     style SendEmail_E fill:#FFB6C1
     style Error fill:#FFB6C1
 ```
@@ -127,11 +127,11 @@ stateDiagram-v2
     ValidateEmail --> ValidatePassword : Valid Email
     ValidateEmail --> Error : Invalid Email
     
-    ValidatePassword --> CheckEmailService : Valid Password
+    ValidatePassword --> CreateUser : Valid Password
     ValidatePassword --> Error : Invalid Password
     
-    CheckEmailService --> SendWelcomeEmail : Service Available
-    CheckEmailService --> Error : Service Unavailable
+    CreateUser --> SendWelcomeEmail : User Created
+    CreateUser --> Error : User Exists
     
     SendWelcomeEmail --> Success : Email Sent
     SendWelcomeEmail --> Error : Send Failed
@@ -154,13 +154,15 @@ The registration process demonstrates Railway-Oriented Programming with a chain 
    - Complexity rules
    - Special character checks
 
-3. **Service Validation**
-   - Email service availability
-   - Template validation
+3. **User Creation**
+   - Check for existing users
+   - Hash password
+   - Create user record
 
 4. **Welcome Email**
+   - Email service validation
+   - Template validation
    - Email sending
-   - Error handling
 
 ### Validation Chain Flow
 
@@ -170,11 +172,11 @@ flowchart TD
     B -->|Success| C{ValidatePassword}
     B -->|Failure| E[Return Error]
     
-    C -->|Success| D{CheckEmailService}
+    C -->|Success| D{CreateUser}
     C -->|Failure| E
     
     D -->|Success| F{SendWelcomeEmail}
-    D -->|Failure| E
+    D -->|User Exists| E
     
     F -->|Success| G[Return Success]
     F -->|Failure| E
@@ -193,22 +195,21 @@ The example includes comprehensive tests demonstrating various scenarios:
 
 ```csharp
 [Theory]
-[InlineData("test@gmail.com", "Pass123!@#", true, true, true, null)]    // Success
-[InlineData("test@gmail.com", "Pass123!@#", false, true, false, "NOTIFY_001")]  // Service unavailable
-[InlineData("test@gmail.com", "Pass123!@#", true, false, false, "NOTIFY_002")]  // Template invalid
-[InlineData("test@gmail.com", "Pass123!@#", false, false, false, "NOTIFY_001")] // Both failed
+[InlineData("test@gmail.com", "Pass123!@#", true, true, null)]    // Success
+[InlineData("test@gmail.com", "Pass123!@#", false, false, "NOTIFY_001")]  // Service unavailable
+[InlineData("test@gmail.com", "Pass123!@#", true, false, "NOTIFY_002")]  // Template invalid
+[InlineData("test@gmail.com", "Pass123!@#", false, false, "NOTIFY_001")] // Both failed
 public void WhenEmailServiceOrTemplateValidation_ShouldBehaveCorrectly(
     string email, 
     string password, 
     bool emailServiceAvailable,
     bool emailTemplateValid,
-    bool shouldSucceed,
     string? expectedErrorCode)
 {
     var service = new UserRegistrationService(emailServiceAvailable, emailTemplateValid);
     var result = service.RegisterUser(email, password);
-    Assert.Equal(shouldSucceed, result.HasResult());
-    if (!shouldSucceed)
+    Assert.Equal(true, result.HasResult());
+    if (!result.HasResult())
     {
         Assert.Equal(expectedErrorCode, result.Error?.Code);
     }
