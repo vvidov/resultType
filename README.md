@@ -1,6 +1,6 @@
 # Result Type for C#
 
-[![Build and Test](https://github.com/[username]/resultType/actions/workflows/build.yml/badge.svg)](https://github.com/[username]/resultType/actions/workflows/build.yml)
+[![Build and Test](https://github.com/vvidov/resultType/actions/workflows/build.yml/badge.svg)](https://github.com/[username]/resultType/actions/workflows/build.yml)
 
 A functional approach to error handling in C# using the Result pattern, inspired by functional programming concepts like Railway-Oriented Programming.
 
