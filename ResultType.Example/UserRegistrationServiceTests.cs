@@ -129,13 +129,13 @@ public class UserRegistrationServiceTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData(null)]
-    public void WhenEmailIsEmptyOrNull_ShouldReturnError(string email)
+    public void WhenEmailIsEmptyOrNull_ShouldReturnError(string? email)
     {
         // Arrange
         var password = "Pass123!@#";
 
         // Act
-        var result = _service.RegisterUser(email, password);
+        var result = _service.RegisterUser(email!, password);
 
         // Assert
         Assert.False(result.HasResult());
@@ -146,13 +146,13 @@ public class UserRegistrationServiceTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData(null)]
-    public void WhenPasswordIsEmptyOrNull_ShouldReturnError(string password)
+    public void WhenPasswordIsEmptyOrNull_ShouldReturnError(string? password)
     {
         // Arrange
         var email = "test@gmail.com";
 
         // Act
-        var result = _service.RegisterUser(email, password);
+        var result = _service.RegisterUser(email, password!);
 
         // Assert
         Assert.False(result.HasResult());
